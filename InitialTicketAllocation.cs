@@ -11,7 +11,7 @@ namespace AzureDevOpsAutomation
         private readonly string organization = "mktp-dev";
         private readonly string project = "Tech";
 
-        public async Task<bool> UpdateTicketAsync(string assignedTo, string workItemId,int EstimatedTime)
+        public async Task<bool> UpdateTicketForQaTaskAsync(string assignedTo, string workItemId,int estimatedTime,string testCaseReviewer,string productOwner,string contributor)
         {
             var url = $"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{workItemId}?api-version=5.0";
 
@@ -31,12 +31,12 @@ namespace AzureDevOpsAutomation
                     {{
                         ""op"": ""add"",
                         ""path"": ""/fields/Microsoft.VSTS.Scheduling.OriginalEstimate"",
-                        ""value"": {EstimatedTime}
+                        ""value"": {estimatedTime}
                     }},
                     {{
                         ""op"": ""add"",
                         ""path"": ""/fields/Microsoft.VSTS.Scheduling.RemainingWork"",
-                        ""value"": {EstimatedTime}
+                        ""value"": {estimatedTime}
                     }},
                     {{
                         ""op"": ""add"",
@@ -47,6 +47,21 @@ namespace AzureDevOpsAutomation
                         ""op"": ""add"",
                         ""path"": ""/fields/System.State"",
                         ""value"": ""New""
+                    }},
+                    {{
+                        ""op"": ""add"",
+                        ""path"": ""/fields/Custom.ProductOwner"",
+                        ""value"": ""{productOwner}""
+                    }},
+                    {{
+                        ""op"": ""add"",
+                        ""path"": ""/fields/Custom.TestCaseReviewer"",
+                        ""value"": ""{testCaseReviewer}""
+                    }},
+                    {{
+                        ""op"": ""add"",
+                        ""path"": ""/fields/Custom.Contributor"",
+                        ""value"": ""{contributor}""
                     }}
                 ]";
                 var request = new HttpRequestMessage(new HttpMethod("PATCH"), url)

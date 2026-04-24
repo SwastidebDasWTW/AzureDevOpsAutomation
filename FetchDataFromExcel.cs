@@ -6,10 +6,13 @@ namespace AzureDevOpsAutomation
     {
         private readonly string filePath;
         private readonly InitialTicketAllocation _InitialTicketUpdationObj;
-        public FetchDataFromExcel(string filePath, string pat)
+        private readonly Action<string> _log;
+        int updateCount = 0;
+        public FetchDataFromExcel(string filePath, Action<string> log)
         {
             this.filePath = filePath;
             _InitialTicketUpdationObj = new InitialTicketAllocation();
+            _log = log;
         }
         public async Task FetchDataAndUpdateInitialTicketInfo()
         {
@@ -25,13 +28,25 @@ namespace AzureDevOpsAutomation
                     string estimatedTime = worksheet.Cell(row, 3).GetString();
 
                     int estimated = int.TryParse(estimatedTime, out var val) ? val : 0;
+                    string testCaseReviewer = worksheet.Cell(row, 4).GetString();
+                    string productOwner = worksheet.Cell(row, 5).GetString();
+                    string contributor = worksheet.Cell(row, 6).GetString();
 
-                    await _InitialTicketUpdationObj.UpdateTicketAsync(
+                    var res=await _InitialTicketUpdationObj.UpdateTicketForQaTaskAsync(
                         assignedTo,
                         workItemId,
-                        estimated
+                        estimated,
+                        testCaseReviewer,
+                        productOwner,
+                        contributor
                     );
+                    if(res){
+                        _log?.Invoke($"{workItemId} Assigned to {assignedTo} with:-\n  Estimated Hours: {estimated}, \n  Test Case Reviewer: {testCaseReviewer}, \n  Product Owner: {productOwner}, \n  Contributor: {contributor}");
+                        updateCount++;
+                    }
                 }
+                _log?.Invoke($"Total {updateCount} tickets updated successfully.");
+                _log?.Invoke("Please check Azure DevOps for the updated ticket information.");
             }
         }
     }
