@@ -21,31 +21,71 @@ namespace AzureDevOpsAutomation
                 var worksheet = workbook.Worksheet(1);
                 int rowCount = worksheet.LastRowUsed().RowNumber();
 
+                int updateCount = 0;
+                int failureCount = 0;
+
                 for (int row = 2; row <= rowCount; row++)
                 {
-                    string workItemId = worksheet.Cell(row, 1).GetString();
-                    string assignedTo = worksheet.Cell(row, 2).GetString();
-                    string estimatedTime = worksheet.Cell(row, 3).GetString();
+                    string workItemId = worksheet.Cell(row, 1).GetString().Trim();
 
-                    int estimated = int.TryParse(estimatedTime, out var val) ? val : 0;
-                    string testCaseReviewer = worksheet.Cell(row, 4).GetString();
-                    string productOwner = worksheet.Cell(row, 5).GetString();
-                    string contributor = worksheet.Cell(row, 6).GetString();
+                    try
+                    {
+                        if (string.IsNullOrWhiteSpace(workItemId))
+                        {
+                            _log?.Invoke($"Skipping row {row}: WorkItemId is empty.");
+                            continue;
+                        }
 
-                    var res=await _InitialTicketUpdationObj.UpdateTicketForQaTaskAsync(
-                        assignedTo,
-                        workItemId,
-                        estimated,
-                        testCaseReviewer,
-                        productOwner,
-                        contributor
-                    );
-                    if(res){
-                        _log?.Invoke($"{workItemId} Assigned to {assignedTo} with:-\n  Estimated Hours: {estimated}, \n  Test Case Reviewer: {testCaseReviewer}, \n  Product Owner: {productOwner}, \n  Contributor: {contributor}");
-                        updateCount++;
+                        string assignedTo = worksheet.Cell(row, 2).GetString().Trim();
+
+                        if (string.IsNullOrWhiteSpace(assignedTo))
+                        {
+                            _log?.Invoke($"Skipping row {row}: AssignedTo is empty.");
+                            continue;
+                        }
+
+                        string estimatedTime = worksheet.Cell(row, 3).GetString().Trim();
+
+                        if (!int.TryParse(estimatedTime, out var estimated))
+                        {
+                            _log?.Invoke($"Invalid estimate in row {row}, defaulting to 0.");
+                            estimated = 0;
+                        }
+
+                        string testCaseReviewer = worksheet.Cell(row, 4).GetString().Trim();
+                        string productOwner = worksheet.Cell(row, 5).GetString().Trim();
+                        string contributor = worksheet.Cell(row, 6).GetString().Trim();
+                        string codeReviewer = worksheet.Cell(row, 7).GetString().Trim();
+
+                        var res = await _InitialTicketUpdationObj.UpdateTicketForTaskAsync(
+                            assignedTo,
+                            workItemId,
+                            estimated,
+                            testCaseReviewer,
+                            productOwner,
+                            contributor,
+                            codeReviewer
+                        );
+
+                        if (res)
+                        {
+                            _log?.Invoke($"{workItemId} assigned to {assignedTo}.");
+                            updateCount++;
+                        }
+                        else
+                        {
+                            _log?.Invoke($"FAILED [WorkItem {workItemId}]");
+                            failureCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log?.Invoke($"ERROR: [Check Row {row} of excel]: {ex.Message}");
+                        failureCount++;
                     }
                 }
-                _log?.Invoke($"Total {updateCount} tickets updated successfully.");
+
+                _log?.Invoke($"Total Success: {updateCount}, Failed: {failureCount}");
                 _log?.Invoke("Please check Azure DevOps for the updated ticket information.");
             }
         }
